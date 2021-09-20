@@ -1,4 +1,4 @@
-# Bernoulli; Cluster sampling
+# Normal; Cluster sampling
 #126
 n = 20
 #m = 20
@@ -12,7 +12,7 @@ sigma2a = 1.0
 mua = 0.0
 
 theta = [beta0, beta1, sigma2e, sigma2a]
-B = 10 # 497
+B = 500 # 497
 
 eps_theta = 10^(-3)
 
@@ -39,10 +39,10 @@ end
 MSE_res = Array{Float64}(undef, B, 3)
 
 ## Simulation start
-verbose = true
+verbose = false
 
-@time for simnum in 1:B
-#@time Threads.@threads for simnum in 1:B
+#@time for simnum in 1:B
+@time Threads.@threads for simnum in 1:B
   Random.seed!(simnum)
   open(joinpath(dirname(@__FILE__), "log.txt"), "a+") do io
   write(io, "$simnum\n")
