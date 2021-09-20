@@ -76,7 +76,6 @@ verbose = false
 
   sigma2e_ini = VarCorr(fm1).s^2
   sigma2a_ini  = VarCorr(fm1).σρ.fac.σ[1]^2
-  #sigma2a_ini  = sigma2a + rand(1)[1] - 0.5
 
   beta_t = beta_ini
   sigma2e_t = sigma2e_ini
