@@ -42,7 +42,7 @@ verbose = false
 
 #@time for simnum in 1:B
 @time Threads.@threads for simnum in 1:B
-  Random.seed!(simnum+20)
+  Random.seed!(simnum)
   open(joinpath(dirname(@__FILE__), "log.txt"), "a+") do io
   write(io, "$simnum\n")
   println(simnum)

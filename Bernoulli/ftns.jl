@@ -132,7 +132,7 @@ function EMalg(x_sampled, y_sampled, beta_t, sigma2a_t, M, n; verbose = falses, 
 
       denom2 = [quadgk(vi -> pdfvi(vi, x_sampled[i], y_sampled[i], [beta0, beta1], sigma2a), -Inf, Inf)[1] for i in 1:M]
       muis2 = [quadgk(vi -> sum(pivi([beta0, beta1], x_sampled[i], vi)) * pdfvi(vi, x_sampled[i], y_sampled[i], [beta0, beta1], sigma2a), -Inf, Inf)[1] for i in 1:M]
-      muis2 = @. muis2 / denom
+      muis2 = @. muis2 / denom2
       break
     else
       beta_t[1] = beta_t2[1]
