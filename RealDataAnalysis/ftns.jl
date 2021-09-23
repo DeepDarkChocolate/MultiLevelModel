@@ -9,7 +9,7 @@ function pdfvi(vi, xi, yi, w2i, beta_t, sigma2a_t)
   return pdf(Normal(sum(@. (yi - pis) * w2i), sqrt(var_tmp)), 0.0) * pdf(Normal(0, sqrt(sigma2a_t)), vi)
 end
 
-function EMalg(x_sampled, y_sampled, beta_t, sigma2a_t, w1, w2, M; verbose = false, eps_theta = 0.001)
+function EMalg(x_sampled, y_sampled, beta_t, sigma2a_t, w1, w2, M; verbose = false, eps_theta = 0.01)
   p = size(beta_t)[1]
   cnt = 0
   #muis = Array{Float64}(undef, M)
@@ -43,7 +43,7 @@ function EMalg(x_sampled, y_sampled, beta_t, sigma2a_t, w1, w2, M; verbose = fal
       end
 
       beta_loop2 = beta_loop .+ (Umat \ Svec)
-      if norm(beta_loop2 .- beta_loop) > 10^(-2)
+      if norm(beta_loop2 .- beta_loop) > eps_theta
         beta_loop = copy(beta_loop2)
         if verbose == true
           println("v", beta_loop2)
@@ -72,7 +72,7 @@ function EMalg(x_sampled, y_sampled, beta_t, sigma2a_t, w1, w2, M; verbose = fal
     if verbose == true
       println("v", theta_t2)
     end
-    if norm(theta_t1 - theta_t2) < 10^(-2)
+    if norm(theta_t1 - theta_t2) < eps_theta
       #denom = [quadgk(vi -> pdfvi(vi, x_sampled[i], y_sampled[i], w2[i], beta_t2, sigma2a_t2), -Inf, Inf)[1] for i in 1:M]
       #muis = [quadgk(vi -> sum(pivi(beta_t2, x_sampled[i], vi)) * pdfvi(vi, x_sampled[i], y_sampled[i], w2[i], beta_t2, sigma2a_t2), -Inf, Inf)[1] for i in 1:M]
       #muis = @. muis / denom

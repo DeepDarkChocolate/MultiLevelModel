@@ -75,7 +75,7 @@ theta_t2 = Vector{Float64}(undef, p + 1)
 beta_t = copy(beta_ini)
 sigma2a_t = sigma2a_ini
 
-theta_t2 = EMalg(X_sampled, Y_sampled, beta_t, sigma2a_t, w1_sampled, w2_sampled, M, verbose = true)
+theta_t2 = EMalg(X_sampled, Y_sampled, beta_t, sigma2a_t, w1_sampled, w2_sampled, M, verbose = true, eps_theta = 0.001)
 
 BOOTNUM = 200
 boot_res = Array{Float64}(undef, BOOTNUM, p + 1)
