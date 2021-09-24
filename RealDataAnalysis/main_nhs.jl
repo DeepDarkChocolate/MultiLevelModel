@@ -65,7 +65,7 @@ fm = @formula(V313_yes ~ V012 + V101_Hill + V101_Terai + V102_Rural +
  V130_Buddhist + V130_Muslim + V130_Kirat + V130_Christian + V133 +
  V137 + V138 + V151_Female + (1|V001))
 fm1 = fit(MixedModel, fm, data_compact, Binomial())
-
+fm1
 beta_ini = coef(fm1)
 sigma2a_ini = ifelse(VarCorr(fm1).σρ.V001.σ[1]^2 == 0, 0.0001, VarCorr(fm1).σρ.V001.σ[1]^2) # or 0.4?
 
@@ -90,7 +90,7 @@ end
   end;
   boot_res[boot_num, :] = bootstrap(X_sampled, theta_t2[1:p], theta_t2[p+1], w1_sampled, w2_sampled)
 end
-CSV.write(joinpath(dirname(@__FILE__), "boot_res.csv"),  DataFrame(boot_res), header=false)
+CSV.write(joinpath(dirname(@__FILE__), "boot_res.csv"),  DataFrame(boot_res, vcat("Intercept", colnames, "sigma2a")), header=false)
 
 #=
 #using Printf
