@@ -36,15 +36,17 @@ all((nepal_i$V102 == 2) == nepal_i$V102_Rural)
 nepal_i <- nepal_i[nepal_i$V130 != 96,]
 tmpmat <- model.matrix(~factor(V130), nepal_i)[, -1]
 
-nepal_i$V130_Buddhist <- tmpmat[,unique(nepal_i$V130)[1] - 1]
-nepal_i$V130_Muslim <- tmpmat[,unique(nepal_i$V130)[2] - 1]
-nepal_i$V130_Kirat <- tmpmat[,unique(nepal_i$V130)[3] - 1]
-nepal_i$V130_Christian <- tmpmat[,unique(nepal_i$V130)[4] - 1]
+nepal_i$V130_Buddhist <- tmpmat[,1]
+nepal_i$V130_Muslim <- tmpmat[,2]
+nepal_i$V130_Kirat <- tmpmat[,3]
+nepal_i$V130_Christian <- tmpmat[,4]
 
 all((nepal_i$V130 == 2) == nepal_i$V130_Buddhist)
 all((nepal_i$V130 == 3) == nepal_i$V130_Muslim)
 all((nepal_i$V130 == 4) == nepal_i$V130_Kirat)
 all((nepal_i$V130 == 5) == nepal_i$V130_Christian)
+
+unique(nepal_i$V130)
 
 #Ethnicity
 
@@ -69,6 +71,10 @@ table(nepal_i$V151)
 #Random variable Y
 unique(nepal_i$V313)
 nepal_i$V313_yes <- ifelse(nepal_i$V313 == 0, 0, 1)
+
+summary(glm(nepal_i$V313_yes ~ nepal_i$V137, family = binomial()))
+by(nepal_i$V313_yes, nepal_i$V137, mean)
+
 
 #########################################
 head(model.matrix(~factor(V101), nepal_i))[,-1]
