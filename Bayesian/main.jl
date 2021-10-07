@@ -19,7 +19,7 @@ end
 ## Parameters defined
 N = 10000
 n = 500
-B = 3
+B = 200
 
 theta = [0.5, 1.3]
 beta = [0.0, 0.4, 0.4] # beta0: to be determined
@@ -36,9 +36,9 @@ nodes, weights = gausshermite(20) # Number of gausshermite points
 Res = Array{Float64}(undef, B, 18)
 
 ## Simulation start
-verbose = true
-@time for simnum in 1:B
-#@time Threads.@threads for simnum in 1:B
+verbose = false
+#@time for simnum in 1:B
+@time Threads.@threads for simnum in 1:B
   Random.seed!(simnum)
   open(joinpath(dirname(@__FILE__), "log.txt"), "a+") do io
   write(io, "$simnum\n")
