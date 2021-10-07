@@ -19,7 +19,7 @@ end
 ## Parameters defined
 N = 10000
 n = 500
-B = 200
+B = 100
 
 theta = [0.5, 1.3]
 beta = [0.0, 0.4, 0.4] # beta0: to be determined
