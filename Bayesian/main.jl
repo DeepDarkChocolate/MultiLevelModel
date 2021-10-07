@@ -13,7 +13,7 @@ using Random
 include("ftns.jl")
 
 if isfile(joinpath(dirname(@__FILE__), "log.txt"))
-  rm(joinpath(dirname(@__FILE__), "log.txt"))
+  rm(joinpath(dirname(@__FILE__), "log.txt")) # If there exists "log.txt", remove it.
 end
 
 ## Parameters defined
@@ -21,11 +21,11 @@ N = 10000
 n = 500
 B = 100
 
-theta = [0.5, 1.3]
-beta = [0.0, 0.4, 0.4] # beta0: to be determined
+theta = [0.5, 1.3] # [θ_0, θ_1]
+beta = [0.0, 0.4, 0.4] # beta0: to be determined; [β_0, β_1, β_2]
 
-sigma2 = 0.5
-phi = 4
+sigma2 = 0.5 # σ^2
+phi = 4 # ϕ
 
 η = vcat(beta, theta, sigma2, phi)
 
@@ -37,8 +37,8 @@ Res = Array{Float64}(undef, B, 18)
 
 ## Simulation start
 verbose = false
-#@time for simnum in 1:B
-@time Threads.@threads for simnum in 1:B
+#@time for simnum in 1:B # Serial programming
+@time Threads.@threads for simnum in 1:B # Parallel programming
   Random.seed!(simnum)
   open(joinpath(dirname(@__FILE__), "log.txt"), "a+") do io
   write(io, "$simnum\n")
@@ -46,18 +46,18 @@ verbose = false
   end;
 
 ## Sample generation
-x = rand(N) .* 2.0
-y = theta[1] .+ theta[2] .* x .+ rand(Normal(0.0, sqrt(sigma2)), N)
+x = rand(N) .* 2.0 # x_i ∼ Unif(0, 2)
+y = theta[1] .+ theta[2] .* x .+ rand(Normal(0.0, sqrt(sigma2)), N) # y_i ∼ θ_0 + θ_1 * x_i + ε_i
 
-beta[1] = solvebeta(x, y, beta, n)
-#sum(@. 1 / (1 + exp(-beta[1] - x * beta[2] - y * beta[3]))) - n
+beta[1] = solvebeta(x, y, beta, n) # Find β_0 such that ∑μ_i = n
+#sum(@. 1 / (1 + exp(-beta[1] - x * beta[2] - y * beta[3]))) - n # check if it's zero
 
-mu = @. 1 / (1 + exp(-beta[1] - x * beta[2] - y * beta[3]))
-Pi = [rand(Beta(mu[i] * phi, (1 - mu[i]) * phi), 1)[1] for i in 1:N]
+mu = @. 1 / (1 + exp(-beta[1] - x * beta[2] - y * beta[3])) # logit(μ_i) = β_0 + β_1 x_i + β_2 y_i
+Pi = [rand(Beta(mu[i] * phi, (1 - mu[i]) * phi), 1)[1] for i in 1:N] # π_i ∼ Beta(μ_i ϕ, (1 - μ_i) ϕ)
 
-I = ifelse.(rand(N) .< Pi, true, false)
+I = ifelse.(rand(N) .< Pi, true, false) # Index set of the sample: I_i ∼ Bernoulli(π_i)
 
-n_obs = sum(I)
+n_obs = sum(I) # Sample size
 
 x_sampled = x[I]
 y_sampled = y[I]
@@ -66,15 +66,15 @@ w_sampled = 1.0 ./ Pi[I]
 
 ## Bayesian inference using Varational approximation
 getq(θ) = TuringDiagMvNormal(θ[1:7], exp.(θ[8:14]))
-q = vi(logπ4, ADVI(10, 10000), getq, vcat(beta, theta, sigma2, phi, rand(7)))
+q = vi(eta -> logπ4(eta; x_sampled = x_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
+nodes = nodes, weights = weights),
+ADVI(10, 10000), getq, vcat(beta, theta, sigma2, phi, rand(7)))
 
 Res[simnum, 1:3] = res1 = q.m[4:6]
 Res[simnum, 4:6] = res2 = q.σ[4:6]
 
 z_α = quantile(Normal(), 1 - 0.025)
 Res[simnum, 7:9] = Coverage = (@. res1 - z_α * res2 < η[4:6] < res1 + z_α * res2)
-
-
 
 if verbose == true
 @show q.m
@@ -125,5 +125,5 @@ if verbose == true
 end
 
 end
-
+## Simulation ends
 CSV.write(joinpath(dirname(@__FILE__), "res.csv"),  DataFrame(Res, collect(string.(1:18))), header=false)
