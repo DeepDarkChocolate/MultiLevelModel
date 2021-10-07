@@ -50,20 +50,46 @@ q = vi(logπ4, ADVI(10, 10000), getq, vcat(beta, theta, sigma2, phi, rand(7)))
 @show logπ4(vcat(beta, theta, sigma2, phi))
 @show logπ4(q.m)
 
+@show res1 = q.m[4:6]
+@show res2 = q.σ[4:6]
+
 z_α = quantile(Normal(), 1 - 0.025)
-@show @. q.m - z_α * q.σ
-@show @. η
-@show @. q.m + z_α * q.σ
-@show (@. q.m - z_α * q.σ < η < q.m + z_α * q.σ)
+Coverage = (@. res1 - z_α * res2 < η[4:6] < res1 + z_α * res2)
+@show Coverage
+@show res1 - z_α * res2
+@show η[4:6]
+@show res1 + z_α * res2
+
+println("---------------------------------------------")
 
 Xmat_sampled = hcat(fill(1, length(x_sampled)),x_sampled)
 thetahat = (transpose(Xmat_sampled) * diagm(w_sampled) * Xmat_sampled) \ (transpose(Xmat_sampled) * diagm(w_sampled) * y_sampled)
 sigma2hat = sum(@. w_sampled * (y_sampled - thetahat[1] - thetahat[2] * x_sampled)^2)  / sum(@. w_sampled)
 
+Hmat = transpose(Xmat_sampled) * diagm(w_sampled) * Xmat_sampled
+#Svec  = zeros(2)
+#Svec[1] = mean((@. y_sampled - thetahat[1] - thetahat[2] * x_sampled), StatsBase.weights(w_sampled))
+#Svec[2] = mean((@. (y_sampled - thetahat[1] - thetahat[2] * x_sampled) * x_sampled), StatsBase.weights(w_sampled))
+Smat = hcat((@. y_sampled - thetahat[1] - thetahat[2] * x_sampled),
+        (@. (y_sampled - thetahat[1] - thetahat[2] * x_sampled) * x_sampled))
+VSmat = transpose(Smat) * diagm(@. w_sampled * (w_sampled - 1)) * Smat
+iHmat = inv(Hmat)
+Vhat_theta = iHmat * VSmat * iHmat + iHmat * sigma2hat
+Vhat_sigma2 = sum(@. w_sampled * (w_sampled - 1) *
+        ((y_sampled - thetahat[1] - x_sampled * thetahat[2])^2 - sigma2hat)^2) /
+        sum(w_sampled)^2 + 2 * sigma2hat^2 / N
 
+res3 = vcat(thetahat, sigma2hat)
+res4 = vcat(diag(Vhat_theta), Vhat_sigma2)
+res4 = sqrt.(res4)
+@show res3
+@show res4
 
-@show thetahat
-
+Coverage = (@. res3 - z_α * res4 < η[4:6] < res3 + z_α * res4)
+@show Coverage
+@show lower = res3 - z_α * res4
+@show η[4:6]
+@show upper = res3 + z_α * res4
 
 #=
 using Optim
