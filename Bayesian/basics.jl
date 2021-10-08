@@ -40,9 +40,37 @@ plot(x, y)
 
 x = collect(range(theta[1] - 4, theta[1]+4, length = 1000))
 y = [logf(beta, [i, theta[2]], sigma2, phi, x_sampled, y_sampled, w_sampled, n_obs, weights, nodes, logf0 = logf0) for i in x]
-y = [logf(q.m[1:3], [i, q.m[5]], q.m[6], q.m[7], x_sampled, y_sampled, w_sampled, n_obs, weights, nodes, logf0 = logf0) for i in x]
-y = [logπ4(vcat(q.m[1:3], i, q.m[5:7])) for i in x]
 plot(x, y)
+
+x = collect(range(theta[1] - 0.5, theta[1]+0.5, length = 1000))
+y = [logπ4(vcat(beta, [i, theta[2]], sigma2, phi); x_sampled = x_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
+nodes = nodes, weights = weights) for i in x]
+plot(x, y)
+
+x = collect(range(q.m[5] - 10, q.m[5]+10, length = 100))
+y = [logπ4(vcat(q.m[1:4], i, q.m[6:7]); x_sampled = x_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
+nodes = nodes, weights = weights) for i in x]
+plot!(x, y)
+
+y0 = [logπ4(vcat(q.m[1:4], i, q.m[6:7]); x_sampled = x_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
+nodes = nodes, weights = weights) for i in x]
+y = [exp.(logπ4(vcat(q.m[1:4], i, q.m[6:7]); x_sampled = x_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
+nodes = nodes, weights = weights) .-findmax(y0)[1]) for i in x]
+
+plot!(x, y)
+
+
+x = collect(range(q.m[5] - 0.1, q.m[5]+0.1, length = 100))
+y0 = [logpdf(q, vcat(q.m[1:4], i, q.m[6:7])) for i in x]
+y = [exp.(logpdf(q, vcat(q.m[1:4], i, q.m[6:7])) .- findmax(y0)[1]) for i in x]
+plot(x, y)
+rand(q, 10000)[5,:]
+
+sqrt(var(rand(q, 10000)[5,:]))
+tmpsample = rand(q, 10000)
+histogram!(tmpsample[5,:])
+
+x[findmax(y)[2]]
 
 x[findmax(y)[2]]
 

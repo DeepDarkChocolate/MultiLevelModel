@@ -28,11 +28,9 @@ logπ4 = function(eta; x_sampled = x_sampled::Vector{Float64},
     return ((eta[6] > 0.0) & (eta[7] > 0.0) & all(alpha2 .> 0.0) & all(beta2 .> 0.0)) ? (muiz = @. eta[1] + eta[2] * x_sampled + eta[3] * (eta[4] + eta[5] * x_sampled);
     sigmaiz = eta[3]* sqrt(eta[6]);
     denomi = (logistic.(muiz .+ sqrt2 .* transpose(nodes) .* sigmaiz) * weights) ./ sqrtπ;
-    sum(logpdf.(Normal(0, sqrt(eta[6])), @. y_sampled - eta[4] - x_sampled * eta[5]) .+
-    @. logpdf(BetaPrime(alpha2, beta2), w_sampled .- 1.0) -
-    log(denomi) + log(mui)) +
-    logpdf(MvNormal([0.0, 0.0, 0.0, 0.0, 0.0], diagm(fill(0.01, 5))), eta[1:5]) +
-    logpdf(InverseGamma(3, 1), eta[6]) + logpdf(InverseGamma(3, 8000), eta[7])) : -Inf
+    sum(@. logpdf(Normal(0, sqrt(eta[6])), @. y_sampled - eta[4] - x_sampled * eta[5]) +
+    logpdf(BetaPrime(alpha2, beta2), w_sampled .- 1.0) -
+    log(denomi) + log(mui))) : -Inf
 end
 #=
 alpha_tmp = [1.0, 0.0, 1.0]
