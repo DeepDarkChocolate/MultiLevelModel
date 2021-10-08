@@ -33,12 +33,13 @@ nodes, weights = gausshermite(20) # Number of gausshermite points
 #dot( weights, @. 1.0 / (1.0 + exp(-nodes * sqrt(2)))) / sqrt(pi)
 #quadgk(v -> pdf(Normal(0.0, 1.0), v) * 1.0 / (1.0 + exp(-v)), -Inf, Inf)
 
+
 Res = Array{Float64}(undef, B, 18)
 
 ## Simulation start
-verbose = false
-#@time for simnum in 1:B # Serial programming
-@time Threads.@threads for simnum in 1:B # Parallel programming
+verbose = true
+@time for simnum in 1:B # Serial programming
+#@time Threads.@threads for simnum in 1:B # Parallel programming
   Random.seed!(simnum)
   open(joinpath(dirname(@__FILE__), "log.txt"), "a+") do io
   write(io, "$simnum\n")
@@ -46,6 +47,8 @@ verbose = false
   end;
 
 ## Sample generation
+simnum = 3
+Random.seed!(simnum)
 x = rand(N) .* 2.0 # x_i ∼ Unif(0, 2)
 y = theta[1] .+ theta[2] .* x .+ rand(Normal(0.0, sqrt(sigma2)), N) # y_i ∼ θ_0 + θ_1 * x_i + ε_i
 
