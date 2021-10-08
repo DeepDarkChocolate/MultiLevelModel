@@ -25,7 +25,7 @@ theta = [0.5, 1.3] # [θ_0, θ_1]
 beta = [0.0, 0.4, 0.4] # beta0: to be determined; [β_0, β_1, β_2]
 
 sigma2 = 0.5 # σ^2
-phi = 4 # ϕ
+phi = 40000 # ϕ
 
 η = vcat(beta, theta, sigma2, phi)
 
@@ -68,7 +68,7 @@ w_sampled = 1.0 ./ Pi[I]
 getq(θ) = TuringDiagMvNormal(θ[1:7], exp.(θ[8:14]))
 q = vi(eta -> logπ4(eta; x_sampled = x_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
 nodes = nodes, weights = weights),
-ADVI(10, 10000), getq, vcat(beta, theta, sigma2, phi, rand(7)))
+ADVI(10, 10000), getq, vcat(beta, theta, sigma2, phi, ones(7)))
 
 Res[simnum, 1:3] = res1 = q.m[4:6]
 Res[simnum, 4:6] = res2 = q.σ[4:6]
@@ -79,8 +79,10 @@ Res[simnum, 7:9] = Coverage = (@. res1 - z_α * res2 < η[4:6] < res1 + z_α * r
 if verbose == true
 @show q.m
 @show q.σ
-@show logπ4(vcat(beta, theta, sigma2, phi))
-@show logπ4(q.m)
+@show logπ4(vcat(beta, theta, sigma2, phi); x_sampled = x_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
+nodes = nodes, weights = weights)
+@show logπ4(q.m; x_sampled = x_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
+nodes = nodes, weights = weights)
 
 @show res1
 @show res2
