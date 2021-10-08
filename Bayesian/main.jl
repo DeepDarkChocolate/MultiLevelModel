@@ -128,4 +128,4 @@ end
 
 end
 ## Simulation ends
-CSV.write(joinpath(dirname(@__FILE__), "res.csv"),  DataFrame(Res, collect(string.(1:18))), header=false)
+CSV.write(joinpath(dirname(@__FILE__), string("res", "_n", n, "_B", B, ".csv")),  DataFrame(Res, collect(string.(1:18))), header=false)
