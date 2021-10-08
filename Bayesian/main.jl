@@ -3,7 +3,7 @@ using QuadGK
 using FastGaussQuadrature
 using LinearAlgebra
 using StatsFuns
-using SpecialFunctions
+#using SpecialFunctions
 using DistributionsAD, AdvancedVI
 using StatsBase
 using CSV
@@ -18,7 +18,7 @@ end
 
 ## Parameters defined
 N = 10000
-n = 500
+n = 100
 B = 100
 
 theta = [0.5, 1.3] # [θ_0, θ_1]

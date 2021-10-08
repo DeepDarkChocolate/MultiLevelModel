@@ -31,8 +31,8 @@ logπ4 = function(eta; x_sampled = x_sampled::Vector{Float64},
     sum(logpdf.(Normal(0, sqrt(eta[6])), @. y_sampled - eta[4] - x_sampled * eta[5]) .+
     @. logpdf(BetaPrime(alpha2, beta2), w_sampled .- 1.0) -
     log(denomi) + log(mui)) +
-    logpdf(MvNormal([0.0, 0.0, 0.0, 0.0, 0.0], diagm(fill(0.01, 5))), eta[1:5]) +
-    logpdf(InverseGamma(3, 1), eta[6]) + logpdf(InverseGamma(3, 8000), eta[7])) : -Inf
+    logpdf(MvNormal([0.0, 0.0, 0.0, 0.0, 0.0], diagm(fill(1000.0, 5))), eta[1:5]) +
+    logpdf(InverseGamma(2, 0.5), eta[6]) + logpdf(InverseGamma(3, 80000), eta[7])) : -Inf
 end
 #=
 alpha_tmp = [1.0, 0.0, 1.0]
