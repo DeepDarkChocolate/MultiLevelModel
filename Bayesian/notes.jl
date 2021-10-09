@@ -99,6 +99,9 @@ nodes = nodes, weights = weights), ones(7); autodiff=:forward)
 
 numerical_hessian = NLSolversBase.hessian!(func,optim.minimizer)
 sqrt.(diag(inv(numerical_hessian)))
+inv(numerical_hessian)
+show(stdout, "text/plain", inv(numerical_hessian))
+show(stdout, "text/plain", cholesky(inv(numerical_hessian), check = false).L)
 
 -logπ4(vcat(beta, theta, sigma2, phi); x_sampled = x_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
 nodes = nodes, weights = weights)
@@ -145,9 +148,10 @@ function vectosym(vec, n)
     return sym
 end
 
-tmpvec = fill(-0.5, 28)
+tmpvec = fill(-9.5, 28)
 tmpvec[1] = tmpvec[8] = tmpvec[14] = tmpvec[19] = tmpvec[23] = tmpvec[26] = tmpvec[28] = 0.0
 getq(vcat(beta, theta, sigma2, phi, tmpvec))
+cholesky([1 1 1; 0 1 1; 0 0 1])
 getq(θ) = TuringDenseMvNormal(θ[1:7], exp.([θ[8]  θ[9]  θ[10] θ[11] θ[12] θ[13] θ[14] ;
                                             θ[9]  θ[15] θ[16] θ[17] θ[18] θ[19] θ[20] ;
                                             θ[10] θ[16] θ[21] θ[22] θ[23] θ[24] θ[25] ;
@@ -155,7 +159,12 @@ getq(θ) = TuringDenseMvNormal(θ[1:7], exp.([θ[8]  θ[9]  θ[10] θ[11] θ[12]
                                             θ[12] θ[18] θ[23] θ[27] θ[30] θ[31] θ[32] ;
                                             θ[13] θ[19] θ[24] θ[28] θ[31] θ[33] θ[34] ;
                                             θ[14] θ[20] θ[25] θ[29] θ[32] θ[34] θ[35]]))
-getq(θ) = TuringDenseMvNormal(θ[1:7], exp.([θ[8]  0 0 0 0 0 0 ;
+
+q = vi(eta -> logπ4(eta; x_sampled = x_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
+nodes = nodes, weights = weights), ADVI(10, 5_000), getq, vcat(beta, theta, sigma2, phi, tmpvec))
+
+
+getq(θ) = TuringDenseMvNormal(θ[1:7], [θ[8]  0 0 0 0 0 0 ;
 θ[9]  θ[15] 0 0 0 0 0 ;
 θ[10] θ[16] θ[21] 0 0 0 0 ;
 θ[11] θ[17] θ[22] θ[26] 0 0 0 ;
@@ -167,24 +176,143 @@ getq(θ) = TuringDenseMvNormal(θ[1:7], exp.([θ[8]  0 0 0 0 0 0 ;
                                             θ[11] θ[17] θ[22] θ[26] 0 0 0 ;
                                             θ[12] θ[18] θ[23] θ[27] θ[30] 0 0 ;
                                             θ[13] θ[19] θ[24] θ[28] θ[31] θ[33] 0 ;
-                                            θ[14] θ[20] θ[25] θ[29] θ[32] θ[34] θ[35]])))
+                                            θ[14] θ[20] θ[25] θ[29] θ[32] θ[34] θ[35]]))
 
 q = vi(eta -> logπ4(eta; x_sampled = x_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
 nodes = nodes, weights = weights), ADVI(10, 5_000), getq, vcat(beta, theta, sigma2, phi, ones(28)))
 #getq(θ) = TuringDiagMvNormal(θ[1:7], exp.(θ[8:56]))
 #q = vi(logπ3, advi, getq, vcat(randn(5), rand(9)))
-q = vi(eta -> logπ4(eta; x_sampled = x_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
-nodes = nodes, weights = weights), ADVI(10, 5_000), getq, vcat(beta, theta, sigma2, phi, tmpvec))
 
 @show q.m
-@show q.C
-
+@show q.C.L * q.C.U
+show(stdout, "text/plain", q.C.L * q.C.U)
+println(q.C.L * q.C.U)
 mean(rand(q, 10_000)[5,:])
-var(rand(q, 10_000)[5,:])
+sqrt(var(rand(q, 10_000)[5,:]))
 
+mean(rand(q, 10_000)[6,:])
+sqrt(var(rand(q, 10_000)[6,:]))
 
 @show logπ4(vcat(beta, theta, sigma2, phi))
 @show logπ4(vcat(q.m[1:3], theta, q.m[6:7]))
 @show logπ4(q.m)
 mean(rand(q, 10_000)[5,:])
 var(rand(q, 10_000)[5,:])
+
+
+getq(θ) = TuringDenseMvNormal(θ[1:7], [θ[8]  0 0 0 0 0 0 ;
+θ[9]  θ[13] 0 0 0 0 0 ;
+θ[10] θ[14] θ[17] 0 0 0 0 ;
+θ[11] θ[15] θ[18] θ[20] 0 0 0 ;
+θ[12] θ[16] θ[19] θ[21] θ[22] 0     0 ;
+0     0     0     0     0     θ[23] 0 ;
+0     0     0     0     0     0     θ[24]] * transpose([θ[8]  0 0 0 0 0 0 ;
+θ[9]  θ[13] 0 0 0 0 0 ;
+θ[10] θ[14] θ[17] 0 0 0 0 ;
+θ[11] θ[15] θ[18] θ[20] 0 0 0 ;
+θ[12] θ[16] θ[19] θ[21] θ[22] 0     0 ;
+0     0     0     0     0     θ[23] 0 ;
+0     0     0     0     0     0     θ[24]]))
+
+q = vi(eta -> logπ4(eta; x_sampled = x_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
+nodes = nodes, weights = weights), ADVI(10, 20_000), getq, vcat(beta, theta, sigma2, phi, ones(17)))
+#getq(θ) = TuringDiagMvNormal(θ[1:7], exp.(θ[8:56]))
+#q = vi(logπ3, advi, getq, vcat(randn(5), rand(9)))
+
+@show q.m
+@show q.C
+
+@show mean(rand(q, 10_000)[5,:])
+@show sqrt(var(rand(q, 10_000)[5,:]))
+
+getq(θ) = TuringDenseMvNormal(θ[1:7],
+[θ[8] 0     0     0     0     0     0 ;
+0     θ[9]  0     0     0     0     0 ;
+0     0     θ[10] 0     0     0     0 ;
+0     0     0     θ[11] 0     0     0 ;
+0     0     0     θ[12] θ[15] 0     0 ;
+0     0     0     θ[13] θ[16] θ[18] 0 ;
+0     0     0     θ[14] θ[17] θ[19] θ[20]] * transpose(
+[θ[8] 0     0     0     0     0     0 ;
+0     θ[9]  0     0     0     0     0 ;
+0     0     θ[10] 0     0     0     0 ;
+0     0     0     θ[11] 0     0     0 ;
+0     0     0     θ[12] θ[15] 0     0 ;
+0     0     0     θ[13] θ[16] θ[18] 0 ;
+0     0     0     θ[14] θ[17] θ[19] θ[20]]))
+
+q = vi(eta -> logπ4(eta; x_sampled = x_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
+nodes = nodes, weights = weights), ADVI(10, 10_000), getq, vcat(beta, theta, sigma2, phi, ones(13), 2e7))
+#getq(θ) = TuringDiagMvNormal(θ[1:7], exp.(θ[8:56]))
+#q = vi(logπ3, advi, getq, vcat(randn(5), rand(9)))
+
+@show q.m
+show(stdout, "text/plain", q.C.L * q.C.U)
+
+mean(rand(q, 10_000)[5,:])
+sqrt(var(rand(q, 10_000)[5,:]))
+
+sqrt((q.C.L * q.C.U)[5,5])
+
+
+
+getq(θ) = TuringDenseMvNormal(θ[1:7], 
+[θ[8] 0     0     0     0     0     0 ;
+0     θ[9]  0     0     0     0     0 ;
+0     0     θ[10] 0     0     0     0 ;
+0     0     0     θ[11] 0     0     0 ;
+0     0     0     θ[12] θ[14] 0     0 ;
+0     0     0     θ[13] θ[15] θ[16] 0 ;
+0     0     0     0     0     0     θ[17]] * transpose(
+[θ[8] 0     0     0     0     0     0 ;
+0     θ[9]  0     0     0     0     0 ;
+0     0     θ[10] 0     0     0     0 ;
+0     0     0     θ[11] 0     0     0 ;
+0     0     0     θ[12] θ[14] 0     0 ;
+0     0     0     θ[13] θ[15] θ[16] 0 ;
+0     0     0     0     0     0     θ[17]]))
+
+q = vi(eta -> logπ4(eta; x_sampled = x_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
+nodes = nodes, weights = weights), ADVI(10, 10_000), getq, vcat(beta, theta, sigma2, phi, ones(9), 1))
+#getq(θ) = TuringDiagMvNormal(θ[1:7], exp.(θ[8:56]))
+#q = vi(logπ3, advi, getq, vcat(randn(5), rand(9)))
+
+@show q.m
+show(stdout, "text/plain", q.C.L * q.C.U)
+show(stdout, "text/plain", q.C.L)
+
+mean(rand(q, 10_000)[5,:])
+sqrt(var(rand(q, 10_000)[5,:]))
+
+@show sqrt((q.C.L * q.C.U)[5,5])
+@show sqrt((q.C.L * q.C.U)[6,6])
+
+
+getq(θ) = TuringDenseMvNormal(θ[1:7],
+[θ[8] 0     0     0     0     0     0 ;
+0     θ[10] 0     0     0     0     0 ;
+0     0     θ[12] 0     0     0     0 ;
+0     0     0     θ[14] 0     0     0 ;
+0     0     0     θ[15] θ[18] 0     0 ;
+0     0     0     θ[16] θ[19] θ[21] 0 ;
+θ[9]  θ[11] θ[13] θ[17] θ[20] θ[22] θ[23]] * transpose(
+[θ[8] 0     0     0     0     0     0 ;
+0     θ[10] 0     0     0     0     0 ;
+0     0     θ[12] 0     0     0     0 ;
+0     0     0     θ[14] 0     0     0 ;
+0     0     0     θ[15] θ[18] 0     0 ;
+0     0     0     θ[16] θ[19] θ[21] 0 ;
+θ[9]  θ[11] θ[13] θ[17] θ[20] θ[22] θ[23]]))
+
+q = vi(eta -> logπ4(eta; x_sampled = x_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
+nodes = nodes, weights = weights), ADVI(10, 10_000), getq, vcat(beta, theta, sigma2, phi, ones(15), 2e7))
+#getq(θ) = TuringDiagMvNormal(θ[1:7], exp.(θ[8:56]))
+#q = vi(logπ3, advi, getq, vcat(randn(5), rand(9)))
+
+@show q.m
+show(stdout, "text/plain", q.C.L * q.C.U)
+
+mean(rand(q, 10_000)[5,:])
+sqrt(var(rand(q, 10_000)[5,:]))
+
+sqrt((q.C.L * q.C.U)[5,5])

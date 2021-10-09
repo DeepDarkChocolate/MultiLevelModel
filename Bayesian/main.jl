@@ -10,6 +10,9 @@ using CSV
 using DataFrames
 using Random
 
+using Optim
+using NLSolversBase
+
 include("ftns.jl")
 
 if isfile(joinpath(dirname(@__FILE__), "log.txt"))
@@ -18,7 +21,7 @@ end
 
 ## Parameters defined
 N = 10000
-n = 100
+n = 500
 B = 100
 
 theta = [0.5, 1.3] # [θ_0, θ_1]
@@ -37,9 +40,9 @@ nodes, weights = gausshermite(20) # Number of gausshermite points
 Res = Array{Float64}(undef, B, 18)
 
 ## Simulation start
-verbose = true
-@time for simnum in 1:B # Serial programming
-#@time Threads.@threads for simnum in 1:B # Parallel programming
+verbose = false
+#@time for simnum in 1:B # Serial programming
+@time Threads.@threads for simnum in 1:B # Parallel programming
   Random.seed!(simnum)
   open(joinpath(dirname(@__FILE__), "log.txt"), "a+") do io
   write(io, "$simnum\n")
@@ -47,8 +50,6 @@ verbose = true
   end;
 
 ## Sample generation
-simnum = 3
-Random.seed!(simnum)
 x = rand(N) .* 2.0 # x_i ∼ Unif(0, 2)
 y = theta[1] .+ theta[2] .* x .+ rand(Normal(0.0, sqrt(sigma2)), N) # y_i ∼ θ_0 + θ_1 * x_i + ε_i
 
@@ -68,20 +69,44 @@ w_sampled = 1.0 ./ Pi[I]
 
 
 ## Bayesian inference using Varational approximation
-getq(θ) = TuringDiagMvNormal(θ[1:7], exp.(θ[8:14]))
+#getq(θ) = TuringDiagMvNormal(θ[1:7], exp.(θ[8:14]))
+#q = vi(eta -> logπ4(eta; x_sampled = x_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
+#nodes = nodes, weights = weights),
+#ADVI(10, 10000), getq, vcat(beta, theta, sigma2, phi, ones(7)))
+
+getq(θ) = TuringDenseMvNormal(θ[1:7],
+[θ[8] 0     0     0     0     0     0 ;
+0     θ[9]  0     0     0     0     0 ;
+0     0     θ[10] 0     0     0     0 ;
+0     0     0     θ[11] 0     0     0 ;
+0     0     0     θ[12] θ[14] 0     0 ;
+0     0     0     θ[13] θ[15] θ[16] 0 ;
+0     0     0     0     0     0     θ[17]] * transpose(
+[θ[8] 0     0     0     0     0     0 ;
+0     θ[9]  0     0     0     0     0 ;
+0     0     θ[10] 0     0     0     0 ;
+0     0     0     θ[11] 0     0     0 ;
+0     0     0     θ[12] θ[14] 0     0 ;
+0     0     0     θ[13] θ[15] θ[16] 0 ;
+0     0     0     0     0     0     θ[17]]))
+
 q = vi(eta -> logπ4(eta; x_sampled = x_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
-nodes = nodes, weights = weights),
-ADVI(10, 10000), getq, vcat(beta, theta, sigma2, phi, ones(7)))
+nodes = nodes, weights = weights), ADVI(10, 20_000), getq, vcat(beta, theta, sigma2, phi, ones(10)))
+#getq(θ) = TuringDiagMvNormal(θ[1:7], exp.(θ[8:56]))
+#q = vi(logπ3, advi, getq, vcat(randn(5), rand(9)))
 
 Res[simnum, 1:3] = res1 = q.m[4:6]
-Res[simnum, 4:6] = res2 = q.σ[4:6]
+#Res[simnum, 4:6] = res2 = q.σ[4:6]
+Res[simnum, 4:6] = res2 = sqrt.(diag(q.C.L * q.C.U)[4:6])
 
 z_α = quantile(Normal(), 1 - 0.025)
 Res[simnum, 7:9] = Coverage = (@. res1 - z_α * res2 < η[4:6] < res1 + z_α * res2)
 
 if verbose == true
 @show q.m
-@show q.σ
+#@show q.σ
+@show sqrt.(diag(q.C.L * q.C.U))
+
 @show logπ4(vcat(beta, theta, sigma2, phi); x_sampled = x_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
 nodes = nodes, weights = weights)
 @show logπ4(q.m; x_sampled = x_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
@@ -94,6 +119,19 @@ nodes = nodes, weights = weights)
 @show res1 - z_α * res2
 @show η[4:6]
 @show res1 + z_α * res2
+println("---------------------------------------------")
+
+minuslogπ4(eta) = -logπ4(eta; x_sampled = x_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
+nodes = nodes, weights = weights)
+optim = optimize(minuslogπ4, vcat(beta, theta, sigma2, phi))
+
+@show optim.minimizer
+
+func = TwiceDifferentiable(eta -> -logπ4(eta; x_sampled = x_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
+nodes = nodes, weights = weights), ones(7); autodiff=:forward)
+
+numerical_hessian = NLSolversBase.hessian!(func,optim.minimizer)
+@show sqrt.(diag(inv(numerical_hessian)))
 println("---------------------------------------------")
 end
 
