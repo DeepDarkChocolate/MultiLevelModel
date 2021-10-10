@@ -21,8 +21,8 @@ end
 
 ## Parameters defined
 N = 10000
-n = 500
-B = 100
+n = 100
+B = 500
 
 theta = [0.5, 1.3] # [θ_0, θ_1]
 beta = [0.0, 0.4, 0.4] # beta0: to be determined; [β_0, β_1, β_2]
