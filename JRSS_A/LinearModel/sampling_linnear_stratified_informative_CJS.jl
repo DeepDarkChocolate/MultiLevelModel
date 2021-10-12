@@ -80,7 +80,13 @@ rm(string(dirName, "/log.txt"), force = true)
 
   a = rand(Normal(mua,sqrt(sigma2a)),N)
 
+  #Mfixed; Non-ICS
+  #a2 = rand(Normal(0,sqrt(1)),N)
+  #a_tilde = exp.(2.5 .+ a2) ./ (1 .+ exp.(2.5 .+ a2))
+  
+  #ICS
   a_tilde = exp.(2.5 .+ a) ./ (1 .+ exp.(2.5 .+ a))
+
   M = round.(Int, Mi .* a_tilde)
 
   x = [randn(i) for i in M]
