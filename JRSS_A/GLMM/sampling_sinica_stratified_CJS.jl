@@ -1,7 +1,7 @@
 #PPS + Stratified Sampling
 #126
 n = 200
-m = 9
+m = 18
 N = 5000
 Mi = 2000
 
@@ -26,7 +26,7 @@ interval = 10.0
 rtol = 1e-5
 K2 = 25
 
-ICS = true # ICS? or Non-ICS
+ICS = false # ICS? or Non-ICS
 
 using Distributions
 using Random

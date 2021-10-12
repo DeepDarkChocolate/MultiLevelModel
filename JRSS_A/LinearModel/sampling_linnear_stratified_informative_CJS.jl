@@ -1,7 +1,7 @@
 #PPS + Stratified
 
 n = 200
-m = 6
+m = 12
 N = 5000
 Mi = 500
 
@@ -23,7 +23,7 @@ interval = 10.0
 rtol = 1e-5
 K2 = 25
 
-ICS = true # ICS? or Non-ICS
+ICS = false # ICS? or Non-ICS
 
 using Distributions
 using Random
