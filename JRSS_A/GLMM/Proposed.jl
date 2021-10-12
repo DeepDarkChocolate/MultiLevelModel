@@ -11,6 +11,69 @@ function S_profile(ai, xi, yi, w2i, beta_t1)
 end
 =#
 
+function solveahat(x, y, w2, beta_t1, mua_t1, sigma2a_t1)
+  n = size(x)[1]
+  a_t2 = Vector{Float64}(undef, n)
+  sigmaa_t1 = sqrt(sigma2a_t1)
+  #Threads.@threads for i in 1:n
+  for i in 1:n
+    #@show i
+    ai0 = mua_t1
+    xi = x[i]
+    yi = y[i]
+    w2i = w2[i]
+    if all(y[i] .== 0)
+      a_t2[i] = -Inf
+    elseif all(y[i] .== 1)
+      a_t2[i] = Inf
+    else
+      ai_t1 = ai0
+      ai_t2 = ai0
+      cnt2 = 0
+
+      while true
+        cnt2 += 1
+        etai = @. beta_t1[2] * xi + ai_t1
+        Pi = @. 1 - 1 / (1 + exp(etai))
+        ai_t2 = ai_t1 + sum(@. (yi - Pi) * w2i) ./ sum(@. Pi * (1 - Pi) * w2i)
+        #@show ai_t2
+        if isnan(ai_t2)
+          #@warn(": NAN generated(solveahat)")
+          #println("ai_t1 = ", ai_t1)
+          #println("ai_t2 = ", ai_t2)
+          #println("y[i] = ", y[i])
+          #println("i = ", i)
+          #println("cnt2 = ", cnt2)
+          ai_t1 = rand(Normal(mua_t1,sigmaa_t1),1)[1]
+          #break
+        #elseif isinf(ai_t2)
+        #  @warn(": inf generated(solveahat)")
+        #  println("ai_t1 = ", ai_t1)
+        #  println("ai_t2 = ", ai_t2)
+        #  println("y[i] = ", y[i])
+        #  println("i = ", i)
+        #  println("cnt2 = ", cnt2)
+        #  ai_t2 = ai_t1
+        #  break
+        elseif abs(ai_t1 - ai_t2) < 10^(-5)
+          break
+        elseif cnt2 > 500
+          @warn("aihat NOT convergent")
+          println("ai_t1 = ", ai_t1)
+          println("ai_t2 = ", ai_t2)
+          println("y[i] = ", y[i])
+          println("i = ", i)
+          break
+        else
+          ai_t1 = ai_t2
+        end
+      end
+      a_t2[i] = ai_t2
+    end
+  end
+  return a_t2
+end
+
 function v_profile(ai, xi, yi, w2i, beta_t1, pi2mati, m)
   Pi = @. 1 - 1 / (1 + exp(beta_t1[1] + beta_t1[2] * xi + ai))
   ratioi = (yi .- Pi) .* w2i

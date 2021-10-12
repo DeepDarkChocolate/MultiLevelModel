@@ -26,6 +26,7 @@ interval = 10.0
 rtol = 1e-5
 K2 = 25
 
+ICS = true # ICS? or Non-ICS
 
 using Distributions
 using Random
@@ -61,8 +62,12 @@ error_return = trues(B, 5)
 time_return = zeros(B)
 
 ## Simulation start
-dirName = joinpath(dirname(@__FILE__), string("m", m, "n", n, "CJS_Mfixed_new"))
-#dirName = joinpath(dirname(@__FILE__), string("m", m, "n", n, "CJS"))
+if ICS == true
+  dirName = joinpath(dirname(@__FILE__), string("m", m, "n", n, "CJS"))
+else
+  dirName = joinpath(dirname(@__FILE__), string("m", m, "n", n, "CJS_Mfixed"))
+end
+
 if !isdir(dirName)
   mkdir(dirName)
 end
@@ -80,13 +85,13 @@ verbose = false
 
   a = rand(Normal(mua,sqrt(sigma2a)),N)
 
-  #Mfixed; Non-ICS
-  a2 = rand(Normal(0,sqrt(1)),N)
-  a_tilde = exp.(2.5 .+ a2) ./ (1 .+ exp.(2.5 .+ a2))
+  if ICS == true
+    a_tilde = exp.(2.5 .+ a) ./ (1 .+ exp.(2.5 .+ a))
+  else
+    a2 = rand(Normal(0,sqrt(1)),N)
+    a_tilde = exp.(2.5 .+ a2) ./ (1 .+ exp.(2.5 .+ a2))
+  end
 
-  #ICS
-  #a_tilde = exp.(2.5 .+ a) ./ (1 .+ exp.(2.5 .+ a))
-  
   M = round.(Int, Mi .* a_tilde)
 
   #M = [Mi for i in 1:N] # SRS case
@@ -566,6 +571,82 @@ verbose = false
 
       theta_res_new7[simnum,:] = theta_t2
 
+      ## normal approximation using profile likelihood; Non-Info; constant w2
+        pi2mat_sampled = [
+        let pi2mat_sampled_tmp = ones(m,m) .* m * (m - 1) / Mi / (Mi-1)
+        pi2mat_sampled_tmp[diagind(pi2mat_sampled_tmp)] .= m / Mi
+        pi2mat_sampled_tmp
+        end for i in 1:n]
+
+        w2_sampled = [1 ./ diag(pi2mat_sampled[i]) for i in 1:n]
+        beta_t1 = copy(beta_ini)
+        mua_t1 = mua_ini
+        sigma2a_t1 = sigma2a_ini
+        beta_t2 = copy(beta_ini)
+
+        cnt = 0
+        while true
+          cnt += 1
+
+          #resTMP = updatebetamat_S(x_sampled, y_sampled, w1_sampled, w2_sampled, beta_t1, mua_t1, sigma2a_t1, K * 5) # MCMC
+          #resTMP = updatebetamat_S(x_sampled, y_sampled, w1_sampled, w2_sampled, beta_t1, mua_t1, sigma2a_t1, 8.0, 1e-2) # Gaussian quadrature(do not use)
+          #resTMP = updatebetamat_S_fast(x_sampled, y_sampled, w1_sampled, w2_sampled, beta_t1, mua_t1, sigma2a_t1, interval, rtol, K2) # Gaussian quadrature
+          resTMP = updatebetamat_S_fast(x_sampled, y_sampled, w1_sampled, w2_sampled, pi2mat_sampled, beta_t1, mua_t1, sigma2a_t1, interval, rtol, K2) # Gaussian quadrature
+          # Parameters depend on sigma^2
+          # len = sqrt(sigma) * 10, rtol = 1e-4, qd points = len * 2.5???;
+          # sigma^2 = 3: length * 2.5 = qd points # len = 17.0, rtol = 1e-4, qd points = 50;
+          # sigma^2 = 1: length * 2.5 = qd points # len = 10.0, rtol = 1e-4, qd points = 25;
+          #resTMP = updatebetamat_S(x_sampled, y_sampled, w1_sampled, w2_sampled, pi2mat_sampled, beta_t1, mua_t1, sigma2a_t1) # Julia Integral and findroot ftn
+          #resTMP = updatebetamat_S(x_sampled, y_sampled, w1_sampled, w2_sampled, pi2mat_sampled, beta_t1, mua_t1, sigma2a_t1, 5.0, 1e-4) # Gaussian quadrature
+
+          beta_t2[2] = resTMP[1]
+          mua_t2 = resTMP[2]
+          sigma2a_t2 = resTMP[3]
+
+          if any([isnan(beta_t2[2]), isnan(mua_t2), isnan(sigma2a_t2)])
+            println("simnum", simnum, ", cnt = ", cnt, ": NAN generated(profile likelihood): perturbation on initial parameters")
+            beta_t1[2] = beta_ini[2]
+            mua_t1 = 2 * mua_ini * rand()
+            sigma2a_t1 = 2 * sigma2a_ini * rand()
+          elseif  sigma2a_t2 > sigma2a * 20.0
+            println("simnum", simnum, ", cnt = ", cnt, ", sigma2a_t2 = ", sigma2a_t2, ": Too large sigma(profile likelihood): perturbation on initial parameters")
+            beta_t1[2] = beta_ini[2]
+            mua_t1 = 2 * mua_ini * rand()
+            sigma2a_t1 = 2 * sigma2a_ini * rand()
+          elseif  sigma2a_t2 < sigma2a * 0.05
+            println("simnum", simnum, ", cnt = ", cnt, ", sigma2a_t2 = ", sigma2a_t2, ": Too small sigma(profile likelihood): perturbation on initial parameters")
+            beta_t1[2] = beta_ini[2]
+            mua_t1 = 2 * mua_ini * rand()
+            sigma2a_t1 = 2 * sigma2a_ini * rand()
+          elseif  cnt > 100
+            @warn(": Convergence Failed(profile likelihood)")
+            println("simnum", simnum, ", cnt = ", cnt)
+            beta_t1[2] = beta_ini[2]
+            mua_t1 = mua_ini
+            sigma2a_t1 = sigma2a_ini
+            theta_t2 = vcat([beta_t2[2], mua_t2, sigma2a_t2])
+            error_return[simnum, 3] = false
+            break
+          else
+            theta_t1 = vcat([beta_t1[2], mua_t1, sigma2a_t1])
+            theta_t2 = vcat([beta_t2[2], mua_t2, sigma2a_t2])
+            if verbose == true
+              println("profile", theta_t2)
+            end
+            if norm(theta_t1 - theta_t2) < eps_theta
+              theta_t2 = vcat(updatebetamat_S_fast_muhat(x_sampled, y_sampled, w1_sampled, w2_sampled, pi2mat_sampled, beta_t1, mua_t1, sigma2a_t1, interval, rtol, K2)...)
+              break
+            else
+              beta_t1[2] = beta_t2[2]
+              mua_t1 = mua_t2
+              sigma2a_t1 = sigma2a_t2
+            end
+          end
+        end
+
+        theta_res_new3[simnum,:] = theta_t2
+
+
   end
   time_return[simnum] = elapsedtime
 end
@@ -613,10 +694,10 @@ CSV.write(string(dirName, "/summary.txt"),  DataFrame(summary_data(theta_res_new
 CSV.write(string(dirName, "/summary.txt"),  DataFrame(summary_data(theta_res_new7)), header=false, append=true)
 
 RES_TOTAL = zeros(12,3)
-RES_VEC = summary_data.([theta_res_new4, theta_res_new6, theta_res_new7])
-for j in [3, 1, 2, 4]
-  for i in 1:3
-    RES_TOTAL[(j - 1)* 3 + i,:] = RES_VEC[i][j,:]
+RES_VEC = summary_data.([theta_res_new3, theta_res_new4, theta_res_new6, theta_res_new7])
+for j in 1:3
+  for i in 1:4
+    RES_TOTAL[(j - 1)* 4 + i,:] = RES_VEC[i][[2, 1, 3][j],:]
   end
 end
 CSV.write(string(dirName, "/RES_TOTAL.txt"),  DataFrame(RES_TOTAL), header=false)

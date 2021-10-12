@@ -23,6 +23,8 @@ interval = 10.0
 rtol = 1e-5
 K2 = 25
 
+ICS = true # ICS? or Non-ICS
+
 using Distributions
 using Random
 using LinearAlgebra
@@ -59,8 +61,12 @@ error_return = trues(B, 5)
 time_return = zeros(B)
 
 ## Simulation start
-dirName = joinpath(dirname(@__FILE__), string("m", m, "n", n, "CJS"))
-#dirName = string("m", m, "n", n, "CJS")
+if ICS == true
+  dirName = joinpath(dirname(@__FILE__), string("m", m, "n", n, "CJS"))
+else
+  dirName = joinpath(dirname(@__FILE__), string("m", m, "n", n, "CJS_Mfixed"))
+end
+
 if !isdir(dirName)
   mkdir(dirName)
 end
@@ -80,12 +86,12 @@ rm(string(dirName, "/log.txt"), force = true)
 
   a = rand(Normal(mua,sqrt(sigma2a)),N)
 
-  #Mfixed; Non-ICS
-  #a2 = rand(Normal(0,sqrt(1)),N)
-  #a_tilde = exp.(2.5 .+ a2) ./ (1 .+ exp.(2.5 .+ a2))
-  
-  #ICS
-  a_tilde = exp.(2.5 .+ a) ./ (1 .+ exp.(2.5 .+ a))
+  if ICS == true
+    a_tilde = exp.(2.5 .+ a) ./ (1 .+ exp.(2.5 .+ a))
+  else
+    a2 = rand(Normal(0,sqrt(1)),N)
+    a_tilde = exp.(2.5 .+ a2) ./ (1 .+ exp.(2.5 .+ a2))
+  end
 
   M = round.(Int, Mi .* a_tilde)
 
@@ -398,25 +404,102 @@ rm(string(dirName, "/log.txt"), force = true)
     theta_res_new6[simnum,:] = theta_t2
 
   ## Composite(Pairwise)-pseudo likelihood
-      beta_t1 = copy(beta_ini)
-      mua_t1 = mua_ini
-      sigma2a_t1 = sigma2a_ini
-      sigma2e_t1 = sigma2e_ini
-      beta_t2 = copy(beta_ini)
+    beta_t1 = copy(beta_ini)
+    mua_t1 = mua_ini
+    sigma2a_t1 = sigma2a_ini
+    sigma2e_t1 = sigma2e_ini
+    beta_t2 = copy(beta_ini)
 
-      resTMP = foo2(x_sampled, y_sampled, w1_sampled, pi2mat_sampled, beta_t1, sigma2e_t1, mua_t1, sigma2a_t1, 1e-3)
+    resTMP = foo2(x_sampled, y_sampled, w1_sampled, pi2mat_sampled, beta_t1, sigma2e_t1, mua_t1, sigma2a_t1, 1e-3)
+
+    beta_t2[2] = resTMP[1]
+    sigma2e_t2 = resTMP[2]
+    mua_t2 = resTMP[3]
+    sigma2a_t2 = resTMP[4]
+
+    theta_t2 = vcat([beta_t2[2], sigma2e_t2, mua_t2, sigma2a_t2])
+    if verbose == true
+      println("pcl", theta_t2)
+    end
+
+    theta_res_new7[simnum,:] = theta_t2
+
+  ## normal approximation using profile likelihood; Non-Info; constant w2
+    pi2mat_sampled = [
+    let pi2mat_sampled_tmp = ones(m,m) .* m * (m - 1) / Mi / (Mi-1)
+    pi2mat_sampled_tmp[diagind(pi2mat_sampled_tmp)] .= m / Mi
+    pi2mat_sampled_tmp
+    end for i in 1:n]
+
+    w2_sampled = [1 ./ diag(pi2mat_sampled[i]) for i in 1:n]
+
+    beta_t1 = copy(beta_ini)
+    mua_t1 = mua_ini
+    sigma2a_t1 = sigma2a_ini
+    sigma2e_t1 = sigma2e_ini
+    beta_t2 = copy(beta_ini)
+
+    cnt = 0
+    while true
+      #global beta_t1, sigma2e_t1, mua_t1, sigma2a_t1, theta_t1, theta_t2, cnt, verbose
+      cnt += 1
+
+      #resTMP = updatebetamat(ahat, x_sampled, y_sampled, w1_sampled, w2_sampled, beta_t1, mua_t1, sigma2a_t1, K * 5) # MCMC
+      resTMP = updatebetamat_S(x_sampled, y_sampled, w1_sampled, w2_sampled, pi2mat_sampled, beta_t1, sigma2e_t1, mua_t1, sigma2a_t1) # gaussian quadrature
+      #resTMP = updatebetamat_fast(ahat, x_sampled, y_sampled, w1_sampled, w2_sampled, beta_t1, mua_t1, sigma2a_t1, interval, rtol, K2) # gaussian quadrature
+      #resTMP = updatebetamat(ahat, x_sampled, y_sampled, w1_sampled, w2_sampled, beta_t1, mua_t1, sigma2a_t1) # Julia Integral and findroot ftn
+      #resTMP = updatebetamat(ahat, x_sampled, y_sampled, w1_sampled, w2_sampled, pi2mat_sampled, beta_t1, mua_t1, sigma2a_t1, 7.0, 1e-5) # gaussian quadrature
+      #@show beta_t1[2]
+      #@show resTMP[1]
 
       beta_t2[2] = resTMP[1]
       sigma2e_t2 = resTMP[2]
       mua_t2 = resTMP[3]
       sigma2a_t2 = resTMP[4]
 
-      theta_t2 = vcat([beta_t2[2], sigma2e_t2, mua_t2, sigma2a_t2])
-      if verbose == true
-        println("pcl", theta_t2)
+      if any([isnan(beta_t2[2]), isnan(mua_t2), isnan(sigma2a_t2)])
+        println("simnum", simnum, ", cnt = ", cnt, ": NAN generated(profile likelihood): perturbation on initial parameters")
+        beta_t1[2] = beta_ini[2]
+        mua_t1 = 2 * mua_ini * rand()
+        sigma2a_t1 = 2 * sigma2a_ini * rand()
+        sigma2e_t1 = sigma2e_ini
+      elseif  sigma2a_t2 > 20.0
+        println("sigma2a_t2", simnum, ", cnt = ", cnt, ", sigma2a_t2 = ", sigma2a_t2, ": Too large sigma(profile likelihood): perturbation on initial parameters")
+        beta_t1[2] = beta_ini[2]
+        mua_t1 = 2 * mua_ini * rand()
+        sigma2a_t1 = 2 * sigma2a_ini * rand()
+        sigma2e_t1 = sigma2e_ini
+      elseif  sigma2a_t2 < 0.05
+        println("simnum", simnum, ", cnt = ", cnt, ", sigma2a_t2 = ", sigma2a_t2, ": Too small sigma(profile likelihood): perturbation on initial parameters")
+        beta_t1[2] = beta_ini[2]
+        mua_t1 = 2 * mua_ini * rand()
+        sigma2a_t1 = 2 * sigma2a_ini * rand()
+        sigma2e_t1 = sigma2e_ini
+      elseif  cnt > 100
+        @warn(": Convergence Failed(profile likelihood)")
+        println("simnum", simnum, ", cnt = ", cnt)
+        theta_t2 = vcat([beta_t2[2], sigma2e_t2, mua_t2, sigma2a_t2])
+        error_return[simnum, 1] = false
+        break
+      else
+        theta_t1 = vcat([beta_t1[2], sigma2e_t1, mua_t1, sigma2a_t1])
+        theta_t2 = vcat([beta_t2[2], sigma2e_t2, mua_t2, sigma2a_t2])
+        if verbose == true
+          println("profile", theta_t2)
+        end
+        if norm(theta_t1 - theta_t2) < eps_theta
+          break
+        else
+          beta_t1[2] = beta_t2[2]
+          mua_t1 = mua_t2
+          sigma2a_t1 = sigma2a_t2
+          sigma2e_t1 = sigma2e_t2
+        end
       end
+    end
 
-      theta_res_new7[simnum,:] = theta_t2
+      theta_res_new3[simnum,:] = theta_t2
+
 
   end
   time_return[simnum] = elapsedtime
@@ -450,11 +533,11 @@ CSV.write(string(dirName, "/summary.txt"),  DataFrame(summary_data(theta_res_new
 CSV.write(string(dirName, "/summary.txt"),  DataFrame(summary_data(theta_res_new6)), header=false, append=true)
 CSV.write(string(dirName, "/summary.txt"),  DataFrame(summary_data(theta_res_new7)), header=false, append=true)
 
-RES_TOTAL = zeros(12,3)
-RES_VEC = summary_data.([theta_res_new4, theta_res_new6, theta_res_new7])
-for j in [3, 1, 2, 4]
-  for i in 1:3
-    RES_TOTAL[(j - 1)* 3 + i,:] = RES_VEC[i][j,:]
+RES_TOTAL = zeros(16,3)
+RES_VEC = summary_data.([theta_res_new3, theta_res_new4, theta_res_new6, theta_res_new7])
+for j in 1:4
+  for i in 1:4
+    RES_TOTAL[(j - 1)* 4 + i,:] = RES_VEC[i][[3, 1, 2, 4][j],:]
   end
 end
 CSV.write(string(dirName, "/RES_TOTAL.txt"),  DataFrame(RES_TOTAL), header=false)

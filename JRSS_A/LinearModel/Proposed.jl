@@ -1,3 +1,18 @@
+function solveahat(x, y, w2, beta_t1)
+  n = size(x)[1]
+  a_t2 = Vector{Float64}(undef, n)
+  Threads.@threads for i in 1:n
+  #for i in 1:n
+    ai0 = 0.0
+    xi = x[i]
+    yi = y[i]
+    w2i = w2[i]
+
+    a_t2[i] = sum(@. w2i * (yi - beta_t1[2] * xi)) / sum(w2i)
+  end
+  return a_t2
+end
+
 # Normal approximation using the profile function
 #=
 function hi_ftn(ai, xi, yi, w2i, beta_t1_2, sigma2e_t1, mua_t1, sigmaa_t1, pi2mati)
