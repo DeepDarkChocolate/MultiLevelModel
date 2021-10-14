@@ -77,7 +77,9 @@ sigma2a_t = sigma2a_ini
 theta_t2 = EMalg(X_sampled, Y_sampled, beta_t, sigma2a_t, w1_sampled, w2_sampled, M, verbose = true, eps_theta = 0.001)
 w2_sampled_tmp = fill(sum([findmax(data.V002[cluster .== cluster[i]])[1] for i in 1:length(data[:,1])]) / sum([sum(data.V001 .== cluster[i]) for i in 1:length(data[:,1])])
 , length(w2_sampled))
-theta_t2 = EMalg(X_sampled, Y_sampled, beta_t, sigma2a_t, w1_sampled, w2_sampled_tmp, M, verbose = true, eps_theta = 0.001)
+theta_t3 = EMalg(X_sampled, Y_sampled, beta_t, sigma2a_t, w1_sampled, w2_sampled_tmp, M, verbose = true, eps_theta = 0.001)
+
+CSV.write(joinpath(dirname(@__FILE__), "theta.csv"),  DataFrame(round.(hcat(theta_t2, theta_t3), digits = 6), :auto), header=false)
 
 BOOTNUM = 200
 boot_res = Array{Float64}(undef, BOOTNUM, p + 1)
@@ -92,7 +94,7 @@ end
   println(boot_num)
   end;
   boot_res[boot_num, :] = bootstrap(X_sampled, theta_t2[1:p], theta_t2[p+1], w1_sampled, w2_sampled)
-  boot_res2[boot_num, :] = bootstrap(X_sampled, theta_t2[1:p], theta_t2[p+1], w1_sampled, w2_sampled_tmp)
+  boot_res2[boot_num, :] = bootstrap(X_sampled, theta_t3[1:p], theta_t3[p+1], w1_sampled, w2_sampled_tmp)
 end
 CSV.write(joinpath(dirname(@__FILE__), "boot_res.csv"),  DataFrame(boot_res, vcat("Intercept", colnames, "sigma2a")), header=false)
 CSV.write(joinpath(dirname(@__FILE__), "boot_res_naive.csv"),  DataFrame(boot_res2, vcat("Intercept", colnames, "sigma2a")), header=false)
