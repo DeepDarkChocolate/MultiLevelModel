@@ -689,9 +689,9 @@ println(NamedArray(vcat([hcat(summary_data(res)[1,:]...) for res in [theta_res_n
 println(NamedArray(vcat([hcat(summary_data(res)[2,:]...) for res in [theta_res_new4, theta_res_new6, theta_res_new7]]...)))
 println(NamedArray(vcat([hcat(summary_data(res)[3,:]...) for res in [theta_res_new4, theta_res_new6, theta_res_new7]]...)))
 
-CSV.write(string(dirName, "/summary.txt"),  DataFrame(summary_data(theta_res_new4)), header=false)
-CSV.write(string(dirName, "/summary.txt"),  DataFrame(summary_data(theta_res_new6)), header=false, append=true)
-CSV.write(string(dirName, "/summary.txt"),  DataFrame(summary_data(theta_res_new7)), header=false, append=true)
+CSV.write(string(dirName, "/summary.txt"),  DataFrame(summary_data(theta_res_new4), :auto), header=false)
+CSV.write(string(dirName, "/summary.txt"),  DataFrame(summary_data(theta_res_new6), :auto), header=false, append=true)
+CSV.write(string(dirName, "/summary.txt"),  DataFrame(summary_data(theta_res_new7), :auto), header=false, append=true)
 
 RES_TOTAL = zeros(12,3)
 RES_VEC = summary_data.([theta_res_new3, theta_res_new4, theta_res_new6, theta_res_new7])
@@ -700,7 +700,7 @@ for j in 1:3
     RES_TOTAL[(j - 1)* 4 + i,:] = RES_VEC[i][[2, 1, 3][j],:]
   end
 end
-CSV.write(string(dirName, "/RES_TOTAL.txt"),  DataFrame(RES_TOTAL), header=false)
+CSV.write(string(dirName, "/RES_TOTAL.txt"),  DataFrame(RES_TOTAL, :auto), header=false)
 #RES_TOTAL
 #print(DataFrame(RES_TOTAL))
 
@@ -717,10 +717,10 @@ println(Time(0) + Second(round(sum(time_return))))
 #(1:length(error_return[:,1]))[error_return[:,2] .== false]
 
 
-CSV.write(string(dirName, "/theta_res_new4.csv"),  DataFrame(theta_res_new4), header=false)
-CSV.write(string(dirName, "/theta_res_new6.csv"),  DataFrame(theta_res_new6), header=false)
-CSV.write(string(dirName, "/theta_res_new7.csv"),  DataFrame(theta_res_new7), header=false)
-CSV.write(string(dirName, "/error_return.csv"),  DataFrame(error_return), header=false)
+CSV.write(string(dirName, "/theta_res_new4.csv"),  DataFrame(theta_res_new4, :auto), header=false)
+CSV.write(string(dirName, "/theta_res_new6.csv"),  DataFrame(theta_res_new6, :auto), header=false)
+CSV.write(string(dirName, "/theta_res_new7.csv"),  DataFrame(theta_res_new7, :auto), header=false)
+CSV.write(string(dirName, "/error_return.csv"),  DataFrame(error_return, :auto), header=false)
 sum(theta_res_new7[:,3] .> 5.0)
 sum(theta_res_new4[:,3] .> 5.0)
 [theta_res_new7[:,3] .> 5.0][1]
