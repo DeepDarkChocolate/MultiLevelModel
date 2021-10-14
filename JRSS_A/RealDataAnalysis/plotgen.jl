@@ -136,10 +136,10 @@ theta_t2 = Vector{Float64}(undef, p + 1)
 beta_t = copy(beta_ini)
 sigma2a_t = sigma2a_ini
 
-#theta_t2 = EMalg(X_sampled, Y_sampled, beta_t, sigma2a_t, w1_sampled, w2_sampled, M, verbose = true, eps_theta = 0.01)
-w2_sampled_tmp = fill(sum([findmax(data.V002[cluster .== cluster[i]])[1] for i in 1:length(data[:,1])]) / sum([sum(data.V001 .== cluster[i]) for i in 1:length(data[:,1])])
-, length(w2_sampled))
-theta_t3 = EMalg(X_sampled, Y_sampled, beta_t, sigma2a_t, w1_sampled, w2_sampled_tmp, M, verbose = true, eps_theta = 0.01)
+theta_t2 = EMalg(X_sampled, Y_sampled, beta_t, sigma2a_t, w1_sampled, w2_sampled, M, verbose = true, eps_theta = 0.01)
+#w2_sampled_tmp = fill(sum([findmax(data.V002[cluster .== cluster[i]])[1] for i in 1:length(data[:,1])]) / sum([sum(data.V001 .== cluster[i]) for i in 1:length(data[:,1])])
+#, length(w2_sampled))
+#theta_t3 = EMalg(X_sampled, Y_sampled, beta_t, sigma2a_t, w1_sampled, w2_sampled_tmp, M, verbose = true, eps_theta = 0.01)#
 
 ahat = solveahat(X_sampled, Y_sampled, w2_sampled, theta_t2[1:(length(theta_t2) - 1)], theta_t2[length(theta_t2)])
 M = [findmax(data.V002[cluster .== cluster[i]])[1] for i in 1:length(data[:,1])]
