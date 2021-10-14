@@ -69,16 +69,19 @@ fm1
 beta_ini = coef(fm1)
 sigma2a_ini = ifelse(VarCorr(fm1).σρ.V001.σ[1]^2 == 0, 0.0001, VarCorr(fm1).σρ.V001.σ[1]^2) # or 0.4?
 
-theta_t1 = Vector{Float64}(undef, p + 1)
 theta_t2 = Vector{Float64}(undef, p + 1)
 
 beta_t = copy(beta_ini)
 sigma2a_t = sigma2a_ini
 
 theta_t2 = EMalg(X_sampled, Y_sampled, beta_t, sigma2a_t, w1_sampled, w2_sampled, M, verbose = true, eps_theta = 0.001)
+w2_sampled_tmp = fill(sum([findmax(data.V002[cluster .== cluster[i]])[1] for i in 1:length(data[:,1])]) / sum([sum(data.V001 .== cluster[i]) for i in 1:length(data[:,1])])
+, length(w2_sampled))
+theta_t2 = EMalg(X_sampled, Y_sampled, beta_t, sigma2a_t, w1_sampled, w2_sampled_tmp, M, verbose = true, eps_theta = 0.001)
 
 BOOTNUM = 200
 boot_res = Array{Float64}(undef, BOOTNUM, p + 1)
+boot_res2 = Array{Float64}(undef, BOOTNUM, p + 1)
 if isfile(joinpath(dirname(@__FILE__), "log.txt"))
   rm(joinpath(dirname(@__FILE__), "log.txt"))
 end
@@ -89,9 +92,10 @@ end
   println(boot_num)
   end;
   boot_res[boot_num, :] = bootstrap(X_sampled, theta_t2[1:p], theta_t2[p+1], w1_sampled, w2_sampled)
+  boot_res2[boot_num, :] = bootstrap(X_sampled, theta_t2[1:p], theta_t2[p+1], w1_sampled, w2_sampled_tmp)
 end
 CSV.write(joinpath(dirname(@__FILE__), "boot_res.csv"),  DataFrame(boot_res, vcat("Intercept", colnames, "sigma2a")), header=false)
-
+CSV.write(joinpath(dirname(@__FILE__), "boot_res_naive.csv"),  DataFrame(boot_res2, vcat("Intercept", colnames, "sigma2a")), header=false)
 #=
 #using Printf
 #map(x -> @sprintf("%.5f", x), resTMP3)
