@@ -5,7 +5,8 @@ function pdfvi(vi, xi, yi, w2i, beta_t, sigma2a_t)
   #@show pdf(Normal(sum(@. yi - pis), sqrt(sum(@. pis * (1 - pis)))), 0.0) * pdf(Normal(0, sqrt(sigma2a_t)), vi)
   #@show vi
   #@show pis
-  var_tmp = ifelse(sum(@. pis * (1 - pis) * w2i^2) == 0.0, eps(), sum(@. pis * (1 - pis) * w2i^2))
+  #var_tmp = ifelse(sum(@. pis * (1 - pis) * w2i^2) == 0.0, eps(), sum(@. pis * (1 - pis) * w2i^2))
+  var_tmp = ifelse(sum(@. (yi - pis)^2 * w2i * (w2i - 1)) == 0.0, eps(), sum(@. (yi - pis)^2 * w2i * (w2i - 1)))
   return pdf(Normal(sum(@. (yi - pis) * w2i), sqrt(var_tmp)), 0.0) * pdf(Normal(0, sqrt(sigma2a_t)), vi)
 end
 
