@@ -15,6 +15,8 @@ using Roots
 #using RCall
 using Dates
 using CSV
+using FastGaussQuadrature
+using NLSolversBase
 
 #include("ftns_method1.jl")
 #include("ftns_method2_gq.jl")
@@ -74,6 +76,12 @@ theta_t2 = Vector{Float64}(undef, p + 1)
 beta_t = copy(beta_ini)
 sigma2a_t = sigma2a_ini
 
+thetahat1, vhat1 = foo(X_sampled, Y_sampled, w1_sampled, beta_t, sigma2a_t)
+thetahat2, vhat2 = foo2(X_sampled, Y_sampled, w1_sampled, beta_t, sigma2a_t)
+
+CSV.write(joinpath(dirname(@__FILE__), "pmlpcl.csv"),  DataFrame(round.(hcat(thetahat1, vhat1, thetahat2, vhat2), digits = 6), :auto), header=false)
+
+#=
 theta_t2 = EMalg(X_sampled, Y_sampled, beta_t, sigma2a_t, w1_sampled, w2_sampled, M, verbose = true, eps_theta = 0.001)
 w2_sampled_tmp = fill(sum([findmax(data.V002[cluster .== cluster[i]])[1] for i in 1:length(data[:,1])]) / sum([sum(data.V001 .== cluster[i]) for i in 1:length(data[:,1])])
 , length(w2_sampled))
@@ -98,6 +106,8 @@ end
 end
 CSV.write(joinpath(dirname(@__FILE__), "boot_res.csv"),  DataFrame(boot_res, vcat("Intercept", colnames, "sigma2a")), header=false)
 CSV.write(joinpath(dirname(@__FILE__), "boot_res_naive.csv"),  DataFrame(boot_res2, vcat("Intercept", colnames, "sigma2a")), header=false)
+=#
+
 #=
 #using Printf
 #map(x -> @sprintf("%.5f", x), resTMP3)
