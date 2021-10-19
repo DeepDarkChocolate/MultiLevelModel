@@ -38,7 +38,7 @@ nodes, Weights = gausshermite(20) # Number of gausshermite points
 
 
 #Res = Array{Float64}(undef, B, 18)
-Res = Array{Float64}(undef, B, 36)
+Res = Array{Float64}(undef, B, 45)
 
 ## Simulation start
 verbose = false
@@ -157,7 +157,7 @@ println("---------------------------------------------")
 end
 
 ## Design-based Estimation
-#=
+
 Xmat_sampled = hcat(fill(1, length(x_sampled)),x_sampled)
 thetahat = (transpose(Xmat_sampled) * diagm(w_sampled) * Xmat_sampled) \ (transpose(Xmat_sampled) * diagm(w_sampled) * y_sampled)
 sigma2hat = sum(@. w_sampled * (y_sampled - thetahat[1] - thetahat[2] * x_sampled)^2)  / sum(@. w_sampled)
@@ -172,11 +172,11 @@ Vhat_sigma2 = sum(@. w_sampled * (w_sampled - 1) *
         ((y_sampled - thetahat[1] - x_sampled * thetahat[2])^2 - sigma2hat)^2) /
         sum(w_sampled)^2 + 2 * sigma2hat^2 / N
 
-Res[simnum, 10:12]  = res3 = vcat(thetahat, sigma2hat)
+Res[simnum, 37:39]  = res3 = vcat(thetahat, sigma2hat)
 res4 = vcat(diag(Vhat_theta), Vhat_sigma2)
-Res[simnum, 13:15] = res4 = sqrt.(res4)
+Res[simnum, 40:42] = res4 = sqrt.(res4)
 
-Res[simnum, 16:18] = Coverage2 = (@. res3 - z_α * res4 < η[4:6] < res3 + z_α * res4)
+Res[simnum, 43:45] = Coverage2 = (@. res3 - z_α * res4 < η[4:6] < res3 + z_α * res4)
 
 if verbose == true
 @show res3
@@ -187,7 +187,7 @@ if verbose == true
 @show η[4:6]
 @show upper = res3 + z_α * res4
 end
-=#
+
 end
 ## Simulation ends
 CSV.write(joinpath(dirname(@__FILE__), string("res", "_n", n, "_B", B, ".csv")),  DataFrame(Res, :auto), header=false)
