@@ -19,12 +19,18 @@ logπ4 = function(eta; x_sampled = x_sampled::Vector{Float64},
     PI = (exp.(hcat(ones(n), x_sampled, y_sampled) * alpha) * mu)./
     (exp.(hcat(ones(n), x_sampled, y_sampled) * alpha) * ones(3));
 
+    #PI_tmp = [sum([mu[h] * exp(alpha[1, h] + alpha[2, h] * x_sampled[i] + alpha[3, h] * y_sampled[i]) for h in 1:3]) / sum([exp(alpha[1, h] + alpha[2, h] * x_sampled[i] + alpha[3, h] * y_sampled[i]) for h in 1:3]) for i in 1:n];
+    #@show all(PI .== PI_tmp);
+
     denom = [sum((exp.(hcat(ones(K), fill(x_sampled[i], K), (@. nodes * sigma + theta0 + theta1 * x_sampled[i])) * alpha) * mu) ./
     (exp.(hcat(ones(K), fill(x_sampled[i], K), (@. nodes * sigma + theta0 + theta1 * x_sampled[i])) * alpha) * ones(3)) .* weights)
     for i in 1:n];
 
     fw = [StatsBase.mean((@. pdf(BetaPrime((1 - mu) * phi, mu * phi + 1), w_sampled[i] - 1.0)), StatsBase.weights(vcat(exp.(hcat(1.0, x_sampled[i], y_sampled[i]) * alpha)...) .* mu))
     for i in 1:n];
+    #fw_tmp = [sum([pdf(BetaPrime((1 - mu[h]) * phi[h], mu[h] * phi[h] + 1), w_sampled[i] - 1.0) * mu[h] * exp(alpha[1, h] + alpha[2, h] * x_sampled[i] + alpha[3, h] * y_sampled[i]) for h in 1:3]) / sum([mu[h] * exp(alpha[1, h] + alpha[2, h] * x_sampled[i] + alpha[3, h] * y_sampled[i]) for h in 1:3]) for i in 1:n];
+    #@show norm(fw .- fw_tmp);
+
     sum(@. logpdf(Normal(0, sigma), @. y_sampled - theta0 - x_sampled * theta1) +
     log(fw) - log(denom) + log(PI))) : -Inf
 end

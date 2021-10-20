@@ -16,10 +16,6 @@ using GLM
 
 include("ftns.jl")
 
-if isfile(joinpath(dirname(@__FILE__), "log.txt"))
-  rm(joinpath(dirname(@__FILE__), "log.txt")) # If there exists "log.txt", remove it.
-end
-
 data = CSV.read(joinpath(dirname(@__FILE__), "data.csv"), DataFrame, header = false)
 
 nodes, WEIGHTS = gausshermite(20) # Number of gausshermite points
@@ -41,7 +37,7 @@ theta_ini = coef(ols)
 sigma2_ini = deviance(ols) / dof_residual(ols)
 
 ## Maximum Likelihood Estimation
-logπ4(vcat(theta_ini, sigma2_ini, fill(0.5, 3), zeros(6), ones(3)); x_sampled = x_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
+logπ4(vcat(theta_ini, sigma2_ini, [1.0/2200.0, 1.0/750.0, 1.0/35.0], collect(1:6), collect(1:3)); x_sampled = x_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
 nodes = NODES, weights = WEIGHTS)
 #logπ4(vcat(zeros(2), 1.0, fill(0.5, 3), ones(6), ones(3)); x_sampled = x_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
 #nodes = NODES, weights = WEIGHTS)
@@ -49,9 +45,16 @@ nodes = NODES, weights = WEIGHTS)
 func = TwiceDifferentiable(eta -> -logπ4(eta; x_sampled = x_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
 nodes = NODES, weights = WEIGHTS), vcat(theta_ini, sigma2_ini, fill(0.5, 3), ones(6), ones(3)); autodiff=:forward)
 
-optim = optimize(func, vcat(theta_ini.-0.3, sigma2_ini, fill(0.5, 3), ones(6), ones(3)), allow_f_increases = true)
+optim = optimize(func, vcat(theta_ini, sigma2_ini, [1.0/2200.0, 1.0/750.0, 1.0/35.0], ones(6), ones(3)), NelderMead(), Optim.Options(iterations = 100000))
+numerical_hessian = NLSolversBase.hessian!(func,optim.minimizer)
+@show optim
+@show optim.minimizer
+@show optim.minimum
+
+optim = optimize(func, vcat(theta_ini, sigma2_ini, fill(0.5, 3), ones(6), ones(3)), Newton(), Optim.Options(iterations = 100000, g_tol = 1e-12))
 numerical_hessian = NLSolversBase.hessian!(func,optim.minimizer)
 
+@show optim
 @show optim.minimizer
 @show optim.minimum
 
