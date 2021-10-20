@@ -21,7 +21,7 @@ end
 
 ## Parameters defined
 N = 10000
-n = 100
+n = 500
 B = 500
 
 theta = [0.5, 1.3] # [θ_0, θ_1]
@@ -32,7 +32,7 @@ phi = 40000 # ϕ
 
 η = vcat(beta, theta, sigma2, phi)
 
-nodes, Weights = gausshermite(20) # Number of gausshermite points
+nodes, Weights = gausshermite(50) # Number of gausshermite points
 #dot( Weights, @. 1.0 / (1.0 + exp(-nodes * sqrt(2)))) / sqrt(pi)
 #quadgk(v -> pdf(Normal(0.0, 1.0), v) * 1.0 / (1.0 + exp(-v)), -Inf, Inf)
 
@@ -72,14 +72,28 @@ w_sampled = 1.0 ./ Pi[I]
 
 
 ## Bayesian inference using Varational approximation
+## Model 1
 func = TwiceDifferentiable(eta -> -logπ4(eta; x_sampled = x_sampled, x2_sampled = x2_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
 nodes = nodes, weights = Weights), vcat(beta, theta, sigma2, phi); autodiff=:forward)
 
-optim = optimize(func, vcat(beta, theta, sigma2, phi))
+optim = optimize(func, vcat(beta, theta, sigma2, phi), NelderMead(), Optim.Options(iterations = 10000))
 numerical_hessian = NLSolversBase.hessian!(func,optim.minimizer)
 
 Res[simnum, 1:3] = res1 = optim.minimizer[4:6]
-Res[simnum, 4:6] = res2 = sqrt.(diag(inv(numerical_hessian)))[4:6]
+#@show optim.trace[end].metadata["h(x)"]
+#@show inv(numerical_hessian)
+
+#=
+@show optim
+@show ishermitian(hessian!(func, optim.minimizer))
+@show ishermitian(numerical_hessian)
+@show issymmetric(numerical_hessian)
+@show issymmetric(inv(numerical_hessian))
+show(stdout, "text/plain", inv(hessian!(func, optim.minimizer)))
+show(stdout, "text/plain", numerical_hessian)
+=#
+
+Res[simnum, 4:6] = res2 = sqrt.(diag(inv(numerical_hessian))[4:6])
 
 z_α = quantile(Normal(), 1 - 0.025)
 Res[simnum, 7:9] = Coverage = (@. res1 - z_α * res2 < η[4:6] < res1 + z_α * res2)
@@ -93,14 +107,16 @@ if verbose == true
 println("---------------------------------------------")
 end
 
+## Model 2
 func = TwiceDifferentiable(eta -> -logπ4(eta; x_sampled = x_sampled, x2_sampled = x_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
 nodes = nodes, weights = Weights), vcat(beta, theta, sigma2, phi); autodiff=:forward)
 
-optim = optimize(func, vcat(beta, theta, sigma2, phi))
+optim = optimize(func, vcat(beta, theta, sigma2, phi), NelderMead(), Optim.Options(iterations = 10000))
 numerical_hessian = NLSolversBase.hessian!(func,optim.minimizer)
 
 Res[simnum, 10:12] = res1 = optim.minimizer[4:6]
-Res[simnum, 13:15] = res2 = sqrt.(diag(inv(numerical_hessian)))[4:6]
+
+Res[simnum, 13:15] = res2 = sqrt.(diag(inv(numerical_hessian))[4:6])
 
 z_α = quantile(Normal(), 1 - 0.025)
 Res[simnum, 16:18] = Coverage = (@. res1 - z_α * res2 < η[4:6] < res1 + z_α * res2)
@@ -114,10 +130,11 @@ if verbose == true
 println("---------------------------------------------")
 end
 
+## Model 3
 func = TwiceDifferentiable(eta -> -logπ5(eta; x_sampled = x_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
 nodes = nodes, weights = Weights), vcat([beta[1], 0.0, beta[3]], theta, sigma2, phi); autodiff=:forward)
 
-optim = optimize(func, vcat([beta[1], 0.0, beta[3]], theta, sigma2, phi))
+optim = optimize(func, vcat([beta[1], 0.0, beta[3]], theta, sigma2, phi), Newton(), Optim.Options(iterations = 10000))
 numerical_hessian = NLSolversBase.hessian!(func,optim.minimizer)
 
 Res[simnum, 19:21] = res1 = optim.minimizer[4:6]
@@ -127,6 +144,7 @@ z_α = quantile(Normal(), 1 - 0.025)
 Res[simnum, 25:27] = Coverage = (@. res1 - z_α * res2 < η[4:6] < res1 + z_α * res2)
 
 if verbose == true
+@show optim
 #show res1
 #show res2
 @show optim.minimizer
@@ -135,10 +153,11 @@ if verbose == true
 println("---------------------------------------------")
 end
 
+## Model 4
 func = TwiceDifferentiable(eta -> -logπ6(eta; x_sampled = x_sampled, x2_sampled = x_sampled, y_sampled = y_sampled, w_sampled = w_sampled,
 nodes = nodes, weights = Weights), vcat([beta[1], beta[2], 0.0], theta, sigma2, phi); autodiff=:forward)
 
-optim = optimize(func, vcat([beta[1], beta[2], 0.0], theta, sigma2, phi))
+optim = optimize(func, vcat([beta[1], beta[2], 0.0], theta, sigma2, phi), Newton(), Optim.Options(iterations = 10000))
 numerical_hessian = NLSolversBase.hessian!(func,optim.minimizer)
 
 Res[simnum, 28:30] = res1 = optim.minimizer[4:6]
@@ -148,6 +167,7 @@ z_α = quantile(Normal(), 1 - 0.025)
 Res[simnum, 34:36] = Coverage = (@. res1 - z_α * res2 < η[4:6] < res1 + z_α * res2)
 
 if verbose == true
+@show optim
 #show res1
 #show res2
 @show optim.minimizer
