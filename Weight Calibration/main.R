@@ -2,6 +2,7 @@
 library(ncvreg)
 library(MASS)
 library(MXM)
+library(glmnet)
 
 n = 100
 N = 10000
@@ -22,7 +23,9 @@ ar1_cor <- function(n, rho) {
 
 x = mvrnorm(n = N, rep(0, p), ar1_cor(40, 0.2))
 x = pnorm(x)
+x = scale(x, T, T)
 x = cbind(1, x)
+
 
 y = x %*% beta + e
 
@@ -46,24 +49,96 @@ for (i in 1:4){
 x_sampled = x[SampleIdx, ]
 y_sampled = y[SampleIdx]
 
-## True parameter
+## True parameter ############
 Y_t = sum(y)
 X_t = apply(x, 2, sum)
 
-## Horvitz Thompson Estimator
+## Horvitz Thompson Estimator ############
 Y_HT = sum(w_sampled * y_sampled)
 X_HT = drop(t(x_sampled) %*% w_sampled)
 
-# Regression Estimator
+## Regression Estimator ############
 beta_wls = lm(y_sampled ~ 0 + x_sampled, weights = w_sampled)
+#beta_wls = lm(y_sampled2 ~ 0 + x_sampled2)
 Y_REG = Y_HT + sum((X_t - X_HT) * coef(beta_wls))
 
+## Model Assisted Estimators ############
+x_sampled2 =  diag(sqrt(w_sampled)) %*% x_sampled
+y_sampled2 =  diag(sqrt(w_sampled)) %*% y_sampled
 
-fit <- cv.ncvreg(x_sampled, y_sampled, penalty = "lasso")
-fit <- cv.ncvreg(x_sampled, y_sampled, penalty = "lasso", alpha = .Machine$double.eps)
+# Ridge
+#fit_Ridge <- cv.ncvreg(x_sampled2, y_sampled2, penalty = "lasso", alpha = .Machine$double.eps)
+#fit_Ridge <- cv.glmnet(x_sampled[, -1], y_sampled, weights = w_sampled, standardize = FALSE,
+#                       alpha = 0, lambda = fit_Ridge$lambda *.Machine$double.eps, thresh = 1E-15)
+#fit_Ridge$lambda*.Machine$double.eps
+#fit_Ridge$lambda.min*.Machine$double.eps
+#lambda_Ridge = fit_Ridge$lambda.min
+x_sampled[1, 1] <- x_sampled[1, 1] + 0.0000001
+fit_Ridge <- cv.glmnet(x_sampled, y_sampled, weights = w_sampled, 
+                       standardize = FALSE, intercept = FALSE,
+                       alpha = 0, thresh = 1E-25)
+coef_Ridge2 = as.vector(coef.glmnet(fit_Ridge, s = fit_Ridge$lambda.min, exact = TRUE, 
+                      x = x_sampled, y= y_sampled, weights= w_sampled))[-1]
 
-fit <- cv.ncvreg(x, y, penalty = "SCAD")
-sfit <- summary(fit)
-sfit
-sfit$lambda[sfit$min]
-coef(fit)
+lambda_Ridge = fit_Ridge$lambda.min / sd(y_sampled)
+
+coef_Ridge = drop(solve(t(x_sampled) %*% diag(w_sampled, n) %*% x_sampled + n / sd(y_sampled) * fit_Ridge$lambda.min * diag(p + 1), 
+           t(x_sampled) %*% diag(w_sampled, n) %*% y_sampled))
+
+Y_Ridge = Y_HT + sum((X_t - X_HT) * coef_Ridge)
+#unname(coef(beta_wls))
+
+# Lasso
+fit_Lasso <- cv.glmnet(x_sampled, y_sampled, weights = w_sampled, 
+                       standardize = FALSE, intercept = FALSE, thresh = 1E-20)
+coef_Lasso = as.vector(coef.glmnet(fit_Lasso, s = fit_Lasso$lambda.min, exact = TRUE, 
+                      x = x_sampled, y= y_sampled, weights= w_sampled))[-1]
+#fit_Lasso$lambda
+
+lambda_Lasso = fit_Lasso$lambda.min / sd(y_sampled)
+Y_Lasso = Y_HT + sum((X_t - X_HT) * coef_Lasso)
+
+# SCAD
+
+## Model Calibration Estimators #########
+# Ridge
+x_Ridge = cbind(1, x %*% as.vector(coef_Ridge))
+X_Ridge_t = apply(x_Ridge, 2, sum)
+
+x_Ridge_sampled = cbind(1, x_sampled %*% as.vector(coef_Ridge))
+X_Ridge_HT = drop(t(x_Ridge_sampled) %*% w_sampled)
+
+beta_Ridge = lm(y_sampled ~ 0 + x_Ridge_sampled, weights = w_sampled)
+Y_MC_Ridge = Y_HT + sum((X_Ridge_t - X_Ridge_HT) * coef(beta_Ridge))
+
+# Lasso
+x_Lasso = cbind(1, x %*% as.vector(coef_Lasso))
+X_Lasso_t = apply(x_Lasso, 2, sum)
+
+x_Lasso_sampled = cbind(1, x_sampled %*% as.vector(coef_Lasso))
+X_Lasso_HT = drop(t(x_Lasso_sampled) %*% w_sampled)
+
+beta_Lasso = lm(y_sampled ~ 0 + x_Lasso_sampled, weights = w_sampled)
+Y_MC_Lasso = Y_HT + sum((X_Lasso_t - X_Lasso_HT) * coef(beta_Lasso))
+
+# SCAD
+
+##  Ridge Calibration estimators #########
+# Ridge
+Q = diag(1 / n / lambda_Ridge, p + 1)
+Y_Ridge_Ridge = drop(Y_HT + t(X_t - X_HT) %*% 
+  Q %*% t(x_sampled) %*% solve(x_sampled %*% Q %*% t(x_sampled) + diag(1 / w_sampled), y_sampled))
+Q %*% t(x_sampled) %*% solve(x_sampled %*% Q %*% t(x_sampled) + diag(1 / w_sampled), y_sampled)
+solve(t(x_sampled) %*% diag(w_sampled) %*% x_sampled + solve(Q), t(x_sampled) %*% diag(w_sampled) %*% y_sampled)
+
+Q %*% t(x_sampled) %*% solve(x_sampled %*% Q %*% t(x_sampled) + diag(1 / w_sampled), y_sampled)
+
+
+# Lasso
+
+
+# SCAD
+
+## Lasso Calibration estimator #########
+
+
